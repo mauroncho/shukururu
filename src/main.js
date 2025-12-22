@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 /**
  * Base
@@ -11,20 +12,34 @@ const canvas = document.querySelector("canvas.webgl");
 // Scene
 const scene = new THREE.Scene();
 
-/**
- * Floor
- */
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(10, 10),
-  new THREE.MeshStandardMaterial({
-    color: "#444444",
-    metalness: 0,
-    roughness: 0.5,
-  })
-);
-floor.receiveShadow = true;
-floor.rotation.x = -Math.PI * 0.5;
-scene.add(floor);
+//loaders
+const gltfLoader = new GLTFLoader();
+
+gltfLoader.load("/models/dog.glb", (gltf) => {
+  const dog = gltf.scene;
+  console.log(gltf);
+  scene.add(dog);
+
+  // Calcular centro real del modelo
+  const box = new THREE.Box3().setFromObject(dog);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+
+  // Mover target de OrbitControls
+  controls.target.copy(center);
+
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const distance = maxDim * 1.2;
+
+  camera.position.set(
+    center.x + distance,
+    center.y + distance * 0.6,
+    center.z + distance
+  );
+
+  camera.lookAt(center);
+  controls.update();
+});
 
 /**
  * Lights
@@ -75,12 +90,13 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   100
 );
-camera.position.set(2, 2, 2);
 scene.add(camera);
 
 // Controls
 const controls = new OrbitControls(camera, canvas);
-controls.target.set(0, 0.75, 0);
+controls.minDistance = 0.3;
+controls.maxDistance = 1;
+
 controls.enableDamping = true;
 
 /**
