@@ -29,9 +29,24 @@ console.log(parts);
 setupDogView(dog, camera, controls);
 
 /**
- * materiales para estado 1
+ * =========================
+ * UTILIDAD REUTILIZABLE
+ * =========================
+ * Aplica un material a todas las meshes del objeto parts
  */
+function applyMaterialToAll(parts, material) {
+  Object.values(parts).forEach((child) => {
+    if (child && child.isMesh) {
+      child.material = material;
+    }
+  });
+}
 
+/**
+ * =========================
+ * ESTADO 1 – NORMAL
+ * =========================
+ */
 function applyNormalState(parts) {
   const blackMaterial = new THREE.MeshStandardMaterial({
     color: "rgb(20, 20, 20)",
@@ -65,18 +80,19 @@ function applyNormalState(parts) {
   if (parts.nose) parts.nose.material = blackMaterial;
 
   if (parts.heart) parts.heart.material = redMaterial;
-  if (parts.tonge) parts.tonge.material = redMaterial;
+  if (parts.tounge) parts.tounge.material = redMaterial;
 }
 
 /**
- * materiales estado 2
+ * =========================
+ * ESTADO 2 – GLOW
+ * =========================
  */
-
 const glowMaterial = new THREE.ShaderMaterial({
   uniforms: {
     glowColor: { value: new THREE.Color(0xff20d7) },
-    coeficient: { value: 0.03 },
-    power: { value: 2.0 },
+    coeficient: { value: 0.3 },
+    power: { value: 0.5 },
   },
   vertexShader: `
     varying vec3 vNormal;
@@ -105,29 +121,51 @@ const glowMaterial = new THREE.ShaderMaterial({
 });
 
 function applyGlowState(parts) {
-  Object.values(parts).forEach((mesh) => {
-    mesh.material = glowMaterial;
-  });
+  applyMaterialToAll(parts, glowMaterial);
 }
 
-const materialStates = [
-  applyNormalState,
-  applyGlowState,
-  // applyFutureState ← acá entra el tercero después
-];
+/**
+ * =========================
+ * ESTADO 3 – WIREFRAME
+ * =========================
+ */
+const wireframeMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  wireframe: true,
+  transparent: true,
+  opacity: 0.5,
+});
 
-let currentStateIndex = 0; // arrancás en glow, por ejemplo
+function applyWireframeState(parts) {
+  applyMaterialToAll(parts, wireframeMaterial);
+}
+
+/**
+ * =========================
+ * MANEJO DE ESTADOS
+ * =========================
+ */
+const materialStates = [applyNormalState, applyGlowState, applyWireframeState];
+
+let currentStateIndex = 0;
 
 function applyCurrentState() {
   materialStates[currentStateIndex](parts);
 }
-applyCurrentState();
 
 function nextState() {
   currentStateIndex = (currentStateIndex + 1) % materialStates.length;
   applyCurrentState();
 }
 
+// aplicar estado inicial
+applyCurrentState();
+
+/**
+ * =========================
+ * INTERACCIÓN
+ * =========================
+ */
 let pointerDownPos = null;
 const dragThreshold = 6;
 
@@ -148,28 +186,6 @@ canvas.addEventListener("pointerup", (e) => {
 
   pointerDownPos = null;
 });
-// pointer click handling with drag threshold so OrbitControls rotations don't trigger
-// let pointerDownPos = null;
-// const dragThreshold = 6; // pixels
-
-// canvas.addEventListener("pointerdown", (e) => {
-//   pointerDownPos = { x: e.clientX, y: e.clientY };
-// });
-
-// canvas.addEventListener("pointerup", (e) => {
-//   if (!pointerDownPos) return;
-//   const dx = e.clientX - pointerDownPos.x;
-//   const dy = e.clientY - pointerDownPos.y;
-//   const dist = Math.sqrt(dx * dx + dy * dy);
-
-//   // small movement => treat as click
-//   if (dist <= dragThreshold) {
-//     const newState = materialController.cycleState();
-//     console.log("material state changed to:", newState);
-//   }
-
-//   pointerDownPos = null;
-// });
 
 window.addEventListener("resize", () => {
   sizes.width = window.innerWidth;
@@ -185,9 +201,14 @@ window.addEventListener("resize", () => {
 });
 
 // animate
+let time = 0;
+
 function tick() {
   controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
+  time += 0.001;
+  const hue = time % 1;
+  glowMaterial.uniforms.glowColor.value.setHSL(hue, 0.8, 0.5);
 }
 tick();
