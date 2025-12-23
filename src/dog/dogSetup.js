@@ -21,6 +21,7 @@ export function setupDogView(dog, camera, controls) {
     center.z + distance
   );
 
+  controls.enablePan = false;
   camera.lookAt(center);
   controls.update();
 }
